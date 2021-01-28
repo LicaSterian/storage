@@ -1,29 +1,47 @@
-# postgres-storage
+API
 
 ### Routes
 
 ```
-POST upload/:tenantID
+POST /file/upload
+form-file named document
 ```
 
 ```
-POST files/:tenantID
-req {page:1, rowsPerPage:10}
-res {success:true, data:[], total:0, error:null}
+POST /files
+req {
+  "id": 1, // optional
+  "page": 1,
+  "perPage": 10,
+  "filterFields": ["name"],
+  "filterValues": [["$like", "foo"]],
+  "sortBy": "created_at",
+  "sortAsc": false,
+  "fields": []
+}
+res {
+  "request_id": 1, // only if passed in request
+  "success": true,
+  "data": {
+    "rows": []
+  },
+  "error": "" // only if there was an error
+}
 ```
 
 ```
 GET file/:id
+download the file
 ```
 
 ```
 DELETE file/:id
+delete the file from /files/uuid path and DB
 ```
 
 ### TODO
 
 [x] pagination support
-[ ] sort by field
+[z] sort by field
 [ ] file size limit env var
-[ ] dockerize
-[ ] env vars
+[ ] encrypt local files

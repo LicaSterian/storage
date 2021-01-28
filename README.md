@@ -1,10 +1,9 @@
-### TODO
+Simple file storage API and UI
 
-[x] Vue SPA
-[x] axios file upload
-[x] Api service port environment variable
-[ ] Login/registration/change password mechanism
-[ ] Own user files
-[ ] POST /files filtering/sorting/fields
-[ ] File encryption/decryption
-[ ] Test table for storage.GetAll
+## API
+
+GoLang with Gin-Gonic framework and Postgres as database
+
+## UI
+
+Vue.js SPA with bootstrap-vue and axios.
