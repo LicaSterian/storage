@@ -1,0 +1,9 @@
+CREATE TABLE
+IF NOT EXISTS files
+(
+  id UUID NOT NULL PRIMARY KEY,
+  name VARCHAR
+(50) NOT NULL,
+  created_at BIGINT NOT NULL,
+  size BIGINT NOT NULL
+);
