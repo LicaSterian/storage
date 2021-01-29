@@ -39,7 +39,11 @@
     <div class="mt-3">
       <b-row>
         <b-col sm="3">
-          <b-form-input v-model="name" placeholder="Search Name"></b-form-input>
+          <b-form-input
+            v-model="name"
+            @keyup.enter.native="onClickSearch"
+            placeholder="Search Name"
+          ></b-form-input>
         </b-col>
         <b-col sm="1">
           <b-button variant="primary" @click="onClickSearch"
