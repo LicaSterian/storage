@@ -116,17 +116,14 @@ export default {
     };
   },
   computed: {
-    filterFields() {
+    filters() {
       let result = [];
       if (this.name != "") {
-        result.push("name");
-      }
-      return result;
-    },
-    filterValues() {
-      let result = [];
-      if (this.name != "") {
-        result.push(["$like", this.name]);
+        result.push({
+          field: "name",
+          operation: "$like",
+          value: this.name,
+        });
       }
       return result;
     },
@@ -137,15 +134,11 @@ export default {
     },
     getPage(page) {
       this.page = page;
-      let filterFields = this.filterFields;
-      let filterValues = this.filterValues;
-
       axios
         .post(`${this.apiUrl}/files`, {
           page,
           perPage: this.perPage,
-          filterFields,
-          filterValues,
+          filters: this.filters,
           sortBy: "created_at",
           sortAsc: true,
         })

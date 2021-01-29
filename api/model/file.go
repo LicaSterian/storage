@@ -12,14 +12,20 @@ type File struct {
 
 // GetAllRequest is the object that binds to the /files/:tenantID request
 type GetAllRequest struct {
-	ID           int64           `json:"id"`
-	Page         int             `json:"page"`
-	PerPage      int             `json:"perPage"`
-	FilterFields []string        `json:"filterFields"`
-	FilterValues [][]interface{} `json:"filterValues"`
-	SortBy       string          `json:"sortBy"`
-	SortAsc      bool            `json:"sortAsc"`
-	Fields       []string        `json:"fields"`
+	ID      int64    `json:"id"`
+	Page    int      `json:"page"`
+	PerPage int      `json:"perPage"`
+	Filters []Filter `json:"filters"`
+	SortBy  string   `json:"sortBy"`
+	SortAsc bool     `json:"sortAsc"`
+	Fields  []string `json:"fields"`
+}
+
+// Filter struct
+type Filter struct {
+	Field     string      `json:"field" binding:"required"`
+	Operation string      `json:"operation" binding:"required"`
+	Value     interface{} `json:"value" binding:"required"`
 }
 
 // Response struct

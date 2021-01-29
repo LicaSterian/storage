@@ -95,10 +95,10 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		statusCode = http.StatusBadRequest
 		return
 	}
-	// sanitizing req.filterFields
-	for _, filterField := range req.FilterFields {
-		if !fields.has(filterField) {
-			err = fmt.Errorf("filterFields error: table '%s' does not have field: %s", tableName, filterField)
+	// sanitizing req.Filters
+	for _, filter := range req.Filters {
+		if !fields.has(filter.Field) {
+			err = fmt.Errorf("filter error: table '%s' does not have field: %s", tableName, filter.Field)
 			res.Error = err.Error()
 			statusCode = http.StatusBadRequest
 			return
@@ -140,38 +140,10 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		queryStr += strings.Join(req.Fields, ", ")
 	}
 	queryStr += fmt.Sprintf(" FROM %s ", tableName)
-	if len(req.FilterFields) > 0 {
-		if len(req.FilterFields) != len(req.FilterValues) {
-			err = errors.New("filterFields length not the same as filterValues length")
-			res.Error = err.Error()
-			statusCode = http.StatusBadRequest
-			return
-		}
-		if len(req.FilterFields) > len(fields) {
-			err = fmt.Errorf("number of filterFields greater than table's '%s' actual fields", tableName)
-			res.Error = err.Error()
-			statusCode = http.StatusBadRequest
-			return
-		}
+	if len(req.Filters) > 0 {
 		// where
-		for i, filterValue := range req.FilterValues {
-			filterValueLen := len(filterValue)
-			filterField := req.FilterFields[i]
-			if filterValueLen != 2 {
-				err = fmt.Errorf("filterField's %s value length not equal to 2", req.FilterFields[i])
-				res.Error = err.Error()
-				statusCode = http.StatusBadRequest
-				return
-			}
-
-			operation, okOperation := filterValue[0].(string)
-			if !okOperation {
-				err = errors.New("operation type not string")
-				res.Error = err.Error()
-				statusCode = http.StatusBadRequest
-				return
-			}
-			val := filterValue[1]
+		for i, filter := range req.Filters {
+			// val := filter.Value
 			if i == 0 {
 				countStr += "WHERE "
 				queryStr += "WHERE "
@@ -179,21 +151,14 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 				countStr += "AND "
 				queryStr += "AND "
 			}
-			switch operation {
+			switch filter.Operation {
 			case likeOperation:
-				if value, valueOk := val.(string); valueOk {
-					countStr += fmt.Sprintf("%s LIKE $%d ", filterField, queryCounter)
-					queryStr += fmt.Sprintf("%s LIKE $%d ", filterField, queryCounter)
-					queryArgs = append(queryArgs, fmt.Sprintf("%%%s%%", value))
-				} else {
-					err = fmt.Errorf("value in type %s not string", likeOperation)
-					res.Error = err.Error()
-					statusCode = http.StatusBadRequest
-					return
-				}
+				countStr += fmt.Sprintf("%s LIKE $%d ", filter.Field, queryCounter)
+				queryStr += fmt.Sprintf("%s LIKE $%d ", filter.Field, queryCounter)
+				queryArgs = append(queryArgs, fmt.Sprintf("%%%s%%", filter.Value))
 			case eqOperation, neOperation, ltOperation, lteOperation, gtOperation, gteOperation:
 				var operationSymbol string
-				switch operation {
+				switch filter.Operation {
 				case eqOperation:
 					operationSymbol = "="
 				case neOperation:
@@ -207,11 +172,11 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 				case gteOperation:
 					operationSymbol = ">="
 				}
-				countStr += fmt.Sprintf("%s %s $%d ", filterField, operationSymbol, queryCounter)
-				queryStr += fmt.Sprintf("%s %s $%d ", filterField, operationSymbol, queryCounter)
-				queryArgs = append(queryArgs, val)
+				countStr += fmt.Sprintf("%s %s $%d ", filter.Field, operationSymbol, queryCounter)
+				queryStr += fmt.Sprintf("%s %s $%d ", filter.Field, operationSymbol, queryCounter)
+				queryArgs = append(queryArgs, filter.Value)
 			default:
-				err = fmt.Errorf("invalid operation %s", operation)
+				err = fmt.Errorf("invalid operation %s", filter.Operation)
 				res.Error = err.Error()
 				statusCode = http.StatusBadRequest
 				return
@@ -221,7 +186,6 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 	}
 	countStr += ";"
 	// fmt.Println("count str", countStr)
-	// fmt.Println("query args", queryArgs)
 
 	sqlTotalRow := s.db.QueryRow(countStr, queryArgs...)
 	totalErr := sqlTotalRow.Scan(&totalRows)
@@ -247,9 +211,7 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 	queryStr += fmt.Sprintf("LIMIT $%d OFFSET $%d;", queryCounter, queryCounter+1)
 	queryArgs = append(queryArgs, req.PerPage, offset)
 	// fmt.Println("query str", queryStr)
-	// fmt.Println("query args", queryArgs)
 
-	// fmt.Printf("req %+v\n", req)
 	sqlRows, err := s.db.Query(queryStr, queryArgs...)
 	if err != nil {
 		err = errors.New("db query error")
