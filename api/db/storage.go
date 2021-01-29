@@ -106,7 +106,7 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 	}
 	// fmt.Println("fields:", fields)
 	// sanitize req.sortBy
-	if !fields.has(req.SortBy) {
+	if req.SortBy != "" && !fields.has(req.SortBy) {
 		err = fmt.Errorf("sortBy error: table '%s' does not have field: %s", tableName, req.SortBy)
 		res.Error = err.Error()
 		statusCode = http.StatusBadRequest
@@ -191,17 +191,13 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 					statusCode = http.StatusBadRequest
 					return
 				}
-			case eqOperation:
-				countStr += fmt.Sprintf("%s = $%d ", filterField, queryCounter)
-				queryStr += fmt.Sprintf("%s = $%d ", filterField, queryCounter)
-				queryArgs = append(queryArgs, val)
-			case neOperation:
-				countStr += fmt.Sprintf("%s <> $%d ", filterField, queryCounter)
-				queryStr += fmt.Sprintf("%s <> $%d ", filterField, queryCounter)
-				queryArgs = append(queryArgs, val)
-			case ltOperation, lteOperation, gtOperation, gteOperation:
+			case eqOperation, neOperation, ltOperation, lteOperation, gtOperation, gteOperation:
 				var operationSymbol string
 				switch operation {
+				case eqOperation:
+					operationSymbol = "="
+				case neOperation:
+					operationSymbol = "<>"
 				case ltOperation:
 					operationSymbol = "<"
 				case lteOperation:
