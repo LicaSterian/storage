@@ -95,6 +95,9 @@ export default {
   components: {},
   created() {
     this.apiUrl = process.env.VUE_APP_API_URL;
+    if (typeof this.$route.query.name != undefined) {
+      this.name = this.$route.query.name;
+    }
     this.getPage(1);
   },
   data() {
