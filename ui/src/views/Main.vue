@@ -13,7 +13,7 @@
         >
       </b-row>
 
-      <b-modal v-model="showUploadFileModal">
+      <b-modal v-model="showUploadFileModal" title="Upload File">
         <input type="file" id="file" ref="file" @change="handleFileUpload()" />
 
         <template #modal-footer>
@@ -21,7 +21,7 @@
             <b-button
               variant="primary"
               class="float-right ml-2"
-              @click="submitFile()"
+              @click="submitFile"
             >
               Upload
             </b-button>
@@ -29,6 +29,29 @@
               variant="secondary"
               class="float-right"
               @click="showUploadFileModal = false"
+            >
+              Cancel
+            </b-button>
+          </div>
+        </template>
+      </b-modal>
+
+      <b-modal v-model="showDeleteFileModal" title="Confirm Deleting of File">
+        Are You sure you want to delete the
+        <strong>{{ toDeleteFileName }}</strong> file?
+        <template #modal-footer>
+          <div class="w-100">
+            <b-button
+              variant="danger"
+              class="float-right ml-2"
+              @click="deleteFile"
+            >
+              Yes
+            </b-button>
+            <b-button
+              variant="secondary"
+              class="float-right"
+              @click="cancelDeleteFile"
             >
               Cancel
             </b-button>
@@ -62,11 +85,11 @@
         <template v-slot:cell(size)="{ value }">
           {{ filesize(value) }}
         </template>
-        <template v-slot:cell(actions)="data">
+        <template v-slot:cell(actions)="{ item }">
           <b-icon
             icon="x-circle"
             variant="danger"
-            @click="deleteFile(data.item.id)"
+            @click="onClickDelete(item.id, item.name)"
           ></b-icon>
         </template>
         <template #table-caption
@@ -120,6 +143,9 @@ export default {
       perPage: 10,
 
       name: "",
+
+      toDeleteId: null,
+      toDeleteFileName: "",
     };
   },
   computed: {
@@ -134,6 +160,9 @@ export default {
       }
       return result;
     },
+    showDeleteFileModal() {
+      return this.toDeleteId != null;
+    },
   },
   methods: {
     onClickSearch() {
@@ -146,8 +175,8 @@ export default {
           page,
           perPage: this.perPage,
           filters: this.filters,
-          sortBy: "created_at",
-          sortAsc: true,
+          sortBy: "size",
+          sortAsc: false,
         })
         .then((res) => {
           this.totalFiles = res.data.data.total;
@@ -210,20 +239,30 @@ export default {
       });
       this.files = files;
     },
-    deleteFile(id) {
-      console.log("delete file", id);
+    onClickDelete(id, name) {
+      this.toDeleteId = id;
+      this.toDeleteFileName = name;
+    },
+    deleteFile() {
       axios
-        .delete(`${this.apiUrl}/file/${id}`)
+        .delete(`${this.apiUrl}/file/${this.toDeleteId}`)
         .then((res) => {
           if (res.data.success) {
             this.getPage(1);
           }
+          // TODO add toast message
           console.log("delete successfull", res.data.message);
         })
         .catch((err) => {
           console.log("delete error", err);
         })
-        .finally(() => {});
+        .finally(() => {
+          this.cancelDeleteFile();
+        });
+    },
+    cancelDeleteFile() {
+      this.toDeleteId = null;
+      this.toDeleteFileName = "";
     },
     onPaginationChange(page) {
       this.getPage(page);
