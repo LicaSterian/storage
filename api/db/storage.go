@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/LicaSterian/storage/api/model"
@@ -19,6 +20,45 @@ func (tf tableFields) has(field string) bool {
 		if field == f {
 			return true
 		}
+	}
+	return false
+}
+
+type m []map[string]interface{}
+
+// sortableMap type to sort the rows by the given key's values
+type sortableMap struct {
+	m
+	sortBy  string
+	sortAsc bool
+}
+
+func (sm sortableMap) Len() int      { return len(sm.m) }
+func (sm sortableMap) Swap(i, j int) { sm.m[i], sm.m[j] = sm.m[j], sm.m[i] }
+func (sm sortableMap) Less(i, j int) bool {
+	m := sm.m[i][sm.sortBy]
+	n := sm.m[j][sm.sortBy]
+	switch n.(type) {
+	case *string:
+		if sm.sortAsc {
+			return *m.(*string) < *n.(*string)
+		}
+		return *m.(*string) > *n.(*string)
+	case *int64:
+		if sm.sortAsc {
+			return *m.(*int64) < *n.(*int64)
+		}
+		return *m.(*int64) > *n.(*int64)
+	case *float64:
+		if sm.sortAsc {
+			return *m.(*float64) < *n.(*float64)
+		}
+		return *m.(*float64) > *n.(*float64)
+	case *uuid.UUID:
+		if sm.sortAsc {
+			return m.(*uuid.UUID).String() < n.(*uuid.UUID).String()
+		}
+		return m.(*uuid.UUID).String() > n.(*uuid.UUID).String()
 	}
 	return false
 }
@@ -211,6 +251,7 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 	queryStr += fmt.Sprintf("LIMIT $%d OFFSET $%d;", queryCounter, queryCounter+1)
 	queryArgs = append(queryArgs, req.PerPage, offset)
 	// fmt.Println("query str", queryStr)
+	// fmt.Println("query args", queryArgs)
 
 	sqlRows, err := s.db.Query(queryStr, queryArgs...)
 	if err != nil {
@@ -219,7 +260,12 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		statusCode = http.StatusInternalServerError
 		return
 	}
-	rows := make([]interface{}, 0)
+	// rows := make(sortableMap, 0)
+	rows := sortableMap{
+		m:       make(m, 0),
+		sortBy:  req.SortBy,
+		sortAsc: req.SortAsc,
+	}
 	cols, colsErr := sqlRows.Columns()
 	if colsErr != nil {
 		err = errors.New("sqlRows.Columns() error")
@@ -233,6 +279,7 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		statusCode = http.StatusInternalServerError
 	}
 
+	// .Next() does not seem to return the rows sorted
 	for sqlRows.Next() {
 		vals := make([]interface{}, len(cols))
 		valsMap := make(map[string]interface{})
@@ -260,7 +307,7 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		for i, col := range cols {
 			valsMap[col] = vals[i]
 		}
-		rows = append(rows, valsMap)
+		rows.m = append(rows.m, valsMap)
 	}
 	rowsCloseErr := sqlRows.Close()
 	if rowsCloseErr != nil {
@@ -275,10 +322,13 @@ func (s Storage) GetAll(tableName string, req model.GetAllRequest) (res model.Ge
 		statusCode = http.StatusInternalServerError
 		return
 	}
+	// sort
+	sort.Sort(rows)
+	// fmt.Println(rows)
 
 	res.Success = true
 	res.Data.Total = totalRows
-	res.Data.Rows = rows
+	res.Data.Rows = rows.m
 
 	return
 }

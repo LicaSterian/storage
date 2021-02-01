@@ -36,7 +36,7 @@
         </template>
       </b-modal>
 
-      <b-modal v-model="showDeleteFileModal" title="Confirm Deleting of File">
+      <b-modal v-model="showDeleteFileModal" title="Confirm Deletion">
         Are You sure you want to delete the
         <strong>{{ toDeleteFileName }}</strong> file?
         <template #modal-footer>
@@ -75,7 +75,17 @@
         </b-col>
       </b-row>
       <br />
-      <b-table striped bordered hover :fields="fields" :items="files">
+      <b-table
+        striped
+        bordered
+        hover
+        :fields="fields"
+        :items="files"
+        :sort-by.sync="sortBy"
+        :sort-desc.sync="sortDesc"
+        no-local-sorting
+        @sort-changed="onSortChanged"
+      >
         <template v-slot:cell(name)="{ item }"
           ><a :href="`${apiUrl}/file/${item.id}`">{{ item.name }}</a></template
         >
@@ -121,6 +131,13 @@ export default {
     if (typeof this.$route.query.name != undefined) {
       this.name = this.$route.query.name;
     }
+    if (typeof this.$route.query.sortBy != undefined) {
+      this.sortBy = this.$route.query.sortBy;
+    }
+    if (typeof this.$route.query.sortDesc != undefined) {
+      this.sortDesc = this.$route.query.sortDesc == "true";
+    }
+
     this.getPage(1);
   },
   data() {
@@ -129,6 +146,9 @@ export default {
 
       showUploadFileModal: false,
       file: "",
+
+      sortBy: "",
+      sortDesc: false,
 
       fields: [
         { key: "name", label: "Name", sortable: true },
@@ -166,6 +186,7 @@ export default {
   },
   methods: {
     onClickSearch() {
+      this.updateRouterQuery();
       this.getPage(1);
     },
     getPage(page) {
@@ -175,8 +196,8 @@ export default {
           page,
           perPage: this.perPage,
           filters: this.filters,
-          sortBy: "size",
-          sortAsc: false,
+          sortBy: this.sortBy,
+          sortAsc: !this.sortDesc,
         })
         .then((res) => {
           this.totalFiles = res.data.data.total;
@@ -257,12 +278,17 @@ export default {
           console.log("delete error", err);
         })
         .finally(() => {
-          this.cancelDeleteFile();
+          this.cancelDeleteFile(); // reset
         });
     },
     cancelDeleteFile() {
       this.toDeleteId = null;
       this.toDeleteFileName = "";
+    },
+    onSortChanged() {
+      this.$nextTick(() => {
+        this.getPage(1);
+      });
     },
     onPaginationChange(page) {
       this.getPage(page);
@@ -272,6 +298,24 @@ export default {
     },
     filesize(value) {
       return filesize(value);
+    },
+    updateRouterQuery() {
+      this.$router.push({
+        path: "/",
+        query: {
+          name: this.name,
+          sortBy: this.sortBy,
+          sortDesc: this.sortDesc,
+        },
+      });
+    },
+  },
+  watch: {
+    sortBy(val) {
+      this.updateRouterQuery();
+    },
+    sortDesc(val) {
+      this.updateRouterQuery();
     },
   },
 };
